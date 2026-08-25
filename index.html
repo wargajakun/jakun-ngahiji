@@ -1,0 +1,115 @@
+function doGet(e) {
+  const action = e.parameter.action;
+  const role = e.parameter.role || 'Warga';
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  if (action === 'getData') {
+    return responseJSON({
+      warga: getWargaData(ss, role),
+      kas: getKasData(ss, role),
+      laporan: getSheetData(ss, 'Laporan'),
+      kegiatan: getSheetData(ss, 'Kegiatan'),
+      pengumuman: getSheetData(ss, 'Pengumuman'),
+      pengaturan: getPengaturanData(ss)
+    });
+  }
+}
+
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const action = data.action;
+
+  if (action === 'addWarga') {
+    const sheet = ss.getSheetByName('Warga');
+    sheet.appendRow([
+      data.No_KK, data.NIK, data.Nama, data.RT, 
+      data.Status_Warga, data.Peran, data.Tanggal_Lahir, 
+      'Hidup', data.Status_Yatim, data.No_WA || ''
+    ]);
+    return responseJSON({ status: 'success', message: 'Warga berhasil ditambahkan' });
+  }
+
+  if (action === 'updateStatusMeninggal') {
+    const sheet = ss.getSheetByName('Warga');
+    const values = sheet.getDataRange().getValues();
+    for (let i = 1; i < values.length; i++) {
+      if (values[i][1] == data.nik) {
+        sheet.getRange(i + 1, 8).setValue('Meninggal');
+        break;
+      }
+    }
+    return responseJSON({ status: 'success' });
+  }
+
+  if (action === 'addKas') {
+    const sheet = ss.getSheetByName('Kas');
+    sheet.appendRow([
+      data.id, data.Tanggal, data.Nama_Penyetor, 
+      data.Jenis_Iuran, data.Tipe, data.Jumlah, data.Keterangan
+    ]);
+    return responseJSON({ status: 'success' });
+  }
+
+  if (action === 'addLaporan') {
+    const sheet = ss.getSheetByName('Laporan');
+    sheet.appendRow([
+      data.id, data.Tanggal, data.Pelapor, data.Jenis, 
+      data.Lokasi, data.Keterangan, 'Sedang Dicek', 
+      data.Is_Darurat ? 'Ya' : 'Tidak', data.Foto || ''
+    ]);
+    return responseJSON({ status: 'success' });
+  }
+}
+
+function getWargaData(ss, role) {
+  const data = getSheetData(ss, 'Warga');
+  if (role === 'Warga') {
+    return data.map(item => {
+      const copy = {...item};
+      delete copy.No_KK;
+      delete copy.NIK;
+      delete copy.Tanggal_Lahir;
+      return copy;
+    });
+  }
+  return data;
+}
+
+function getKasData(ss, role) {
+  const data = getSheetData(ss, 'Kas');
+  if (role === 'Warga') {
+    return data.map(item => {
+      const copy = {...item};
+      copy.Nama_Penyetor = '*** (Disembunyikan)';
+      return copy;
+    });
+  }
+  return data;
+}
+
+function getPengaturanData(ss) {
+  const raw = getSheetData(ss, 'Pengaturan');
+  const res = {};
+  raw.forEach(r => res[r.Key] = r.Value);
+  return res;
+}
+
+function getSheetData(ss, sheetName) {
+  const sheet = ss.getSheetByName(sheetName);
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+  const headers = rows.shift();
+  return rows.map(row => {
+    let obj = {};
+    headers.forEach((h, i) => obj[h] = row[i]);
+    return obj;
+  });
+}
+
+function responseJSON(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+
