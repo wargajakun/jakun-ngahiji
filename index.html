@@ -1,115 +1,1340 @@
-function doGet(e) {
-  const action = e.parameter.action;
-  const role = e.parameter.role || 'Warga';
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  
-  if (action === 'getData') {
-    return responseJSON({
-      warga: getWargaData(ss, role),
-      kas: getKasData(ss, role),
-      laporan: getSheetData(ss, 'Laporan'),
-      kegiatan: getSheetData(ss, 'Kegiatan'),
-      pengumuman: getSheetData(ss, 'Pengumuman'),
-      pengaturan: getPengaturanData(ss)
-    });
-  }
-}
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JAKUN NGAHIJI - Sistem Informasi Terpadu RW 07</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            navy: '#1e3a8a',
+                            blue: '#0284c7',
+                            sky: '#38bdf8',
+                            orange: '#f97316',
+                            orangeHover: '#ea580c'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen flex flex-col">
 
-function doPost(e) {
-  const data = JSON.parse(e.postData.contents);
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const action = data.action;
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
-  if (action === 'addWarga') {
-    const sheet = ss.getSheetByName('Warga');
-    sheet.appendRow([
-      data.No_KK, data.NIK, data.Nama, data.RT, 
-      data.Status_Warga, data.Peran, data.Tanggal_Lahir, 
-      'Hidup', data.Status_Yatim, data.No_WA || ''
-    ]);
-    return responseJSON({ status: 'success', message: 'Warga berhasil ditambahkan' });
-  }
+    <!-- TOPBAR HEADER -->
+    <header class="bg-gradient-to-r from-brand-navy via-blue-900 to-brand-blue text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 sm:h-20">
+                <!-- Logo Aplikasi & Slogan -->
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('dashboard')">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20 backdrop-blur-md shadow-inner">
+                        <span class="font-black text-xl sm:text-2xl text-brand-orange">J</span>
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-base sm:text-xl tracking-wide leading-none flex items-center gap-2">
+                            JAKUN NGAHIJI
+                            <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-medium">RW 07</span>
+                        </h1>
+                        <p class="text-[11px] sm:text-xs text-sky-200 font-light mt-0.5">"Mari bersama menjaga lingkungan Jakun"</p>
+                    </div>
+                </div>
 
-  if (action === 'updateStatusMeninggal') {
-    const sheet = ss.getSheetByName('Warga');
-    const values = sheet.getDataRange().getValues();
-    for (let i = 1; i < values.length; i++) {
-      if (values[i][1] == data.nik) {
-        sheet.getRange(i + 1, 8).setValue('Meninggal');
-        break;
-      }
-    }
-    return responseJSON({ status: 'success' });
-  }
+                <!-- Tombol Mode Akses, API & Login -->
+                <div class="flex items-center space-x-2 sm:space-x-3">
+                    <div class="hidden sm:flex flex-col items-end mr-2">
+                        <span class="text-[10px] text-sky-200 uppercase tracking-wider font-semibold">Mode Akses</span>
+                        <span id="roleDisplayBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-orange-500/20 text-brand-orange border border-orange-500/40">
+                            Warga (Publik)
+                        </span>
+                    </div>
+                    <button onclick="openApiModal()" title="Pengaturan URL Google Sheets API" class="p-2 sm:p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all text-xs sm:text-sm">
+                        <i class="fa-solid fa-database"></i>
+                    </button>
+                    <button id="loginLogoutBtn" onclick="toggleLoginLogout()" class="bg-brand-orange hover:bg-brand-orangeHover text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-lg flex items-center space-x-1.5 sm:space-x-2">
+                        <i class="fa-solid fa-user-shield"></i>
+                        <span id="loginBtnText">Masuk Admin</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
 
-  if (action === 'addKas') {
-    const sheet = ss.getSheetByName('Kas');
-    sheet.appendRow([
-      data.id, data.Tanggal, data.Nama_Penyetor, 
-      data.Jenis_Iuran, data.Tipe, data.Jumlah, data.Keterangan
-    ]);
-    return responseJSON({ status: 'success' });
-  }
+    <!-- TOP NAVIGATION BAR (MENU BERJEJER DI ATAS) -->
+    <div class="bg-white border-b border-slate-200 shadow-sm sticky top-16 sm:top-20 z-30">
+        <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between">
+                <!-- Horizontal Nav Links -->
+                <nav class="flex space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar py-2.5 w-full">
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn active flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap text-brand-blue bg-sky-50 shadow-sm">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>Dashboard</span>
+                    </button>
+                    <button onclick="switchTab('data-warga')" id="nav-data-warga" class="nav-btn flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+                        <i class="fa-solid fa-address-book"></i>
+                        <span>Data Warga</span>
+                    </button>
+                    <button onclick="switchTab('kas-rw')" id="nav-kas-rw" class="nav-btn flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+                        <i class="fa-solid fa-wallet"></i>
+                        <span>Kas RW</span>
+                    </button>
+                    <button onclick="switchTab('statistik')" id="nav-statistik" class="nav-btn flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+                        <i class="fa-solid fa-chart-column"></i>
+                        <span>Statistik</span>
+                    </button>
+                    <button onclick="switchTab('lapor')" id="nav-lapor" class="nav-btn flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+                        <i class="fa-solid fa-bullhorn"></i>
+                        <span>Warga Melapor</span>
+                    </button>
+                    <button onclick="switchTab('kegiatan')" id="nav-kegiatan" class="nav-btn flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+                        <i class="fa-solid fa-calendar-check"></i>
+                        <span>Kegiatan</span>
+                    </button>
+                    <button onclick="switchTab('pengumuman')" id="nav-pengumuman" class="nav-btn flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+                        <i class="fa-solid fa-newspaper"></i>
+                        <span>Pengumuman</span>
+                    </button>
+                    <button onclick="switchTab('pengaturan')" id="nav-pengaturan" class="nav-btn hidden flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap text-red-600 bg-red-50 hover:bg-red-100">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span>Pengaturan</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </div>
 
-  if (action === 'addLaporan') {
-    const sheet = ss.getSheetByName('Laporan');
-    sheet.appendRow([
-      data.id, data.Tanggal, data.Pelapor, data.Jenis, 
-      data.Lokasi, data.Keterangan, 'Sedang Dicek', 
-      data.Is_Darurat ? 'Ya' : 'Tidak', data.Foto || ''
-    ]);
-    return responseJSON({ status: 'success' });
-  }
-}
+    <!-- MAIN BODY LAYOUT -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-1 py-6">
 
-function getWargaData(ss, role) {
-  const data = getSheetData(ss, 'Warga');
-  if (role === 'Warga') {
-    return data.map(item => {
-      const copy = {...item};
-      delete copy.No_KK;
-      delete copy.NIK;
-      delete copy.Tanggal_Lahir;
-      return copy;
-    });
-  }
-  return data;
-}
+        <!-- MAIN CONTENT AREA -->
+        <main class="w-full space-y-6">
 
-function getKasData(ss, role) {
-  const data = getSheetData(ss, 'Kas');
-  if (role === 'Warga') {
-    return data.map(item => {
-      const copy = {...item};
-      copy.Nama_Penyetor = '*** (Disembunyikan)';
-      return copy;
-    });
-  }
-  return data;
-}
+            <!-- TAB 1: DASHBOARD -->
+            <section id="tab-dashboard" class="tab-panel space-y-6">
+                <!-- Kontak WA Pengurus Langsung -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <a id="waRwLink" href="https://wa.me/628123456789" target="_blank" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-500 transition-all flex items-center space-x-4 group">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                            <i class="fa-brands fa-whatsapp"></i>
+                        </div>
+                        <div>
+                            <span class="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-800 mb-1">Ketua RW 07</span>
+                            <h4 id="namaKetuaRW" class="font-bold text-slate-800 text-sm">Ahmad Subagja</h4>
+                            <p class="text-xs text-slate-500">Hubungi via WA &rarr;</p>
+                        </div>
+                    </a>
+                    <a id="waRt13Link" href="https://wa.me/628129876543" target="_blank" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-500 transition-all flex items-center space-x-4 group">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                            <i class="fa-brands fa-whatsapp"></i>
+                        </div>
+                        <div>
+                            <span class="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-sky-100 text-sky-800 mb-1">Ketua RT 13</span>
+                            <h4 id="namaKetuaRT13" class="font-bold text-slate-800 text-sm">H. Budi Santoso</h4>
+                            <p class="text-xs text-slate-500">Hubungi via WA &rarr;</p>
+                        </div>
+                    </a>
+                    <a id="waRt14Link" href="https://wa.me/6281311223344" target="_blank" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-500 transition-all flex items-center space-x-4 group">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                            <i class="fa-brands fa-whatsapp"></i>
+                        </div>
+                        <div>
+                            <span class="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-sky-100 text-sky-800 mb-1">Ketua RT 14</span>
+                            <h4 id="namaKetuaRT14" class="font-bold text-slate-800 text-sm">Dedi Kurnia</h4>
+                            <p class="text-xs text-slate-500">Hubungi via WA &rarr;</p>
+                        </div>
+                    </a>
+                </div>
 
-function getPengaturanData(ss) {
-  const raw = getSheetData(ss, 'Pengaturan');
-  const res = {};
-  raw.forEach(r => res[r.Key] = r.Value);
-  return res;
-}
+                <!-- Banner Ucapan Ulang Tahun -->
+                <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-brand-orange text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+                    <div class="absolute -right-6 -bottom-6 opacity-20 text-9xl">
+                        <i class="fa-solid fa-cake-candles"></i>
+                    </div>
+                    <div class="relative z-10 space-y-2">
+                        <div class="flex items-center space-x-2 text-amber-100 text-xs font-bold uppercase tracking-wider">
+                            <i class="fa-solid fa-gift text-sm"></i>
+                            <span>Ulang Tahun Bulan Ini</span>
+                        </div>
+                        <h3 class="text-xl font-extrabold">Selamat Ulang Tahun Kepada Warga Jakun! 🎉</h3>
+                        <div id="birthdayListContainer" class="text-sm text-amber-50 pt-1 space-y-1">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
 
-function getSheetData(ss, sheetName) {
-  const sheet = ss.getSheetByName(sheetName);
-  const rows = sheet.getDataRange().getValues();
-  if (rows.length <= 1) return [];
-  const headers = rows.shift();
-  return rows.map(row => {
-    let obj = {};
-    headers.forEach((h, i) => obj[h] = row[i]);
-    return obj;
-  });
-}
+                <!-- Dashboard Grid Widget -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Pengumuman Terbaru -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <div class="flex items-center justify-between border-b pb-3">
+                            <h3 class="font-bold text-slate-800 flex items-center space-x-2">
+                                <i class="fa-solid fa-newspaper text-brand-blue"></i>
+                                <span>Pengumuman Terbaru</span>
+                            </h3>
+                            <button onclick="switchTab('pengumuman')" class="text-xs text-brand-blue font-bold hover:underline">Lihat Semua</button>
+                        </div>
+                        <div id="dashboardAnnounceContainer" class="space-y-3">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
 
-function responseJSON(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+                    <!-- Laporan Belum Update Admin -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <div class="flex items-center justify-between border-b pb-3">
+                            <h3 class="font-bold text-slate-800 flex items-center space-x-2">
+                                <i class="fa-solid fa-clock-rotate-left text-brand-orange"></i>
+                                <span>Laporan Menunggu Update Admin</span>
+                            </h3>
+                            <button onclick="switchTab('lapor')" class="text-xs text-brand-blue font-bold hover:underline">Kelola Laporan</button>
+                        </div>
+                        <div id="dashboardReportsContainer" class="space-y-3">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </section>
 
+            <!-- TAB 2: DATA WARGA -->
+            <section id="tab-data-warga" class="tab-panel hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-800">Data Kependudukan Warga Jakun</h2>
+                            <p class="text-xs text-slate-500">Daftar warga dikelompokkan per Kartu Keluarga (KK)</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button id="btnTambahWarga" onclick="openWargaModal()" class="hidden bg-brand-blue hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow flex items-center space-x-2">
+                                <i class="fa-solid fa-user-plus"></i>
+                                <span>+ Tambah Warga 1 KK</span>
+                            </button>
+                        </div>
+                    </div>
 
+                    <!-- Filter & Pencarian Warga -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
+                            <input type="text" id="wargaSearchInput" oninput="renderWargaTable()" placeholder="Cari nama / sebutan warga..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue">
+                        </div>
+                        <select id="wargaRtFilter" onchange="renderWargaTable()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-blue">
+                            <option value="">Semua Wilayah (RT 13 & RT 14)</option>
+                            <option value="RT 13">RT 13</option>
+                            <option value="RT 14">RT 14</option>
+                        </select>
+                        <select id="wargaStatusFilter" onchange="renderWargaTable()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-blue">
+                            <option value="">Semua Jenis Warga</option>
+                            <option value="Tetap">Warga Tetap</option>
+                            <option value="Pendatang">Warga Pendatang</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Kontainer Daftar Warga Terkelompok KK -->
+                <div id="wargaContainer" class="space-y-6">
+                    <!-- Dynamic rendering -->
+                </div>
+            </section>
+
+            <!-- TAB 3: KAS RW -->
+            <section id="tab-kas-rw" class="tab-panel hidden space-y-6">
+                <!-- Ringkasan Saldo -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Saldo Iuran Wajib</span>
+                        <h3 id="saldoIuranWajib" class="text-2xl font-extrabold text-slate-800">Rp 0</h3>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Saldo Lain-lain / Donasi</span>
+                        <h3 id="saldoLainLain" class="text-2xl font-extrabold text-slate-800">Rp 0</h3>
+                    </div>
+                    <div class="bg-gradient-to-br from-brand-navy to-brand-blue text-white p-5 rounded-2xl shadow-md space-y-1">
+                        <span class="text-xs font-bold text-sky-200 uppercase tracking-wider">Total Kas RW Tersedia</span>
+                        <h3 id="saldoTotalKas" class="text-2xl font-extrabold text-white">Rp 0</h3>
+                    </div>
+                </div>
+
+                <!-- Tabel Mutasi Kas -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-800">Rincian Mutasi Kas RW 07</h2>
+                            <p class="text-xs text-slate-500">Transparansi pemasukan & pengeluaran kas lingkungan</p>
+                        </div>
+                        <button id="btnTambahKas" onclick="openKasModal()" class="hidden bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow flex items-center space-x-2 self-start">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>+ Tambah Transaksi Kas</span>
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase text-slate-500">
+                                <tr>
+                                    <th class="px-6 py-4">Tanggal</th>
+                                    <th class="px-6 py-4">Penyetor / Sumber</th>
+                                    <th class="px-6 py-4">Jenis Iuran</th>
+                                    <th class="px-6 py-4">Keterangan</th>
+                                    <th class="px-6 py-4">Tipe</th>
+                                    <th class="px-6 py-4 text-right">Jumlah</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kasTableBody" class="divide-y divide-slate-100">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: STATISTIK -->
+            <section id="tab-statistik" class="tab-panel hidden space-y-6">
+                <!-- Card Angka Utama -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-1">
+                        <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Jiwa RW 07</span>
+                        <h3 id="statTotalJiwa" class="text-3xl font-black text-brand-navy">0</h3>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-1">
+                        <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">Total KK</span>
+                        <h3 id="statTotalKK" class="text-3xl font-black text-brand-blue">0</h3>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-1">
+                        <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">Angka Kelahiran</span>
+                        <h3 id="statKelahiran" class="text-3xl font-black text-emerald-600">0</h3>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-1">
+                        <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">Angka Kematian</span>
+                        <h3 id="statKematian" class="text-3xl font-black text-red-600">0</h3>
+                    </div>
+                </div>
+
+                <!-- Detail Distribusi RT & Umur -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <h3 class="font-bold text-slate-800 text-base border-b pb-3">Distribusi Jiwa per RT</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-slate-600 mb-1">
+                                    <span>RT 13</span>
+                                    <span id="statRt13Text">0 Jiwa (0 KK)</span>
+                                </div>
+                                <div class="w-full bg-slate-100 rounded-full h-3">
+                                    <div id="statRt13Bar" class="bg-brand-blue h-3 rounded-full" style="width: 50%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-slate-600 mb-1">
+                                    <span>RT 14</span>
+                                    <span id="statRt14Text">0 Jiwa (0 KK)</span>
+                                </div>
+                                <div class="w-full bg-slate-100 rounded-full h-3">
+                                    <div id="statRt14Bar" class="bg-brand-orange h-3 rounded-full" style="width: 50%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <h3 class="font-bold text-slate-800 text-base border-b pb-3">Demografi Umur & Anak Yatim</h3>
+                        <div class="grid grid-cols-2 gap-3 text-center">
+                            <div class="p-3 bg-slate-50 rounded-xl">
+                                <span class="text-[11px] text-slate-400 font-bold uppercase">Balita (0-5 thn)</span>
+                                <h4 id="statBalita" class="text-xl font-bold text-slate-800">0</h4>
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded-xl">
+                                <span class="text-[11px] text-slate-400 font-bold uppercase">Anak (6-12 thn)</span>
+                                <h4 id="statAnak" class="text-xl font-bold text-slate-800">0</h4>
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded-xl">
+                                <span class="text-[11px] text-slate-400 font-bold uppercase">Remaja (13-17 thn)</span>
+                                <h4 id="statRemaja" class="text-xl font-bold text-slate-800">0</h4>
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded-xl">
+                                <span class="text-[11px] text-slate-400 font-bold uppercase">Dewasa (18-65 thn)</span>
+                                <h4 id="statDewasa" class="text-xl font-bold text-slate-800">0</h4>
+                            </div>
+                            <div class="p-3 bg-amber-50 rounded-xl col-span-1">
+                                <span class="text-[11px] text-amber-700 font-bold uppercase">Lansia (&gt;65 thn)</span>
+                                <h4 id="statLansia" class="text-xl font-bold text-amber-700">0</h4>
+                            </div>
+                            <div class="p-3 bg-purple-50 rounded-xl col-span-1">
+                                <span class="text-[11px] text-purple-700 font-bold uppercase">Anak Yatim</span>
+                                <h4 id="statYatim" class="text-xl font-bold text-purple-700">0</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: WARGA MELAPOR -->
+            <section id="tab-lapor" class="tab-panel hidden space-y-6">
+                <!-- Form Input Laporan Warga -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center space-x-2">
+                        <i class="fa-solid fa-pen-to-square text-brand-orange"></i>
+                        <span>Buat Laporan Baru Warga</span>
+                    </h3>
+                    <form onsubmit="handleAddLaporan(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Nama Pelapor *</label>
+                                <input type="text" id="lapPelapor" required placeholder="Nama lengkap Anda..." class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Jenis Laporan *</label>
+                                <select id="lapJenis" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue">
+                                    <option value="Keamanan & Ketertiban">Keamanan & Ketertiban</option>
+                                    <option value="Fasilitas Umum & Penerangan">Fasilitas Umum & Penerangan</option>
+                                    <option value="Kebersihan & Sampah">Kebersihan & Sampah</option>
+                                    <option value="Kegawatdaruratan">Kegawatdaruratan</option>
+                                    <option value="Lainnya">Lainnya</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Lokasi Patokan *</label>
+                            <input type="text" id="lapLokasi" required placeholder="Misal: Pos Ronda RT 13 / Gang Utama RT 14" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Rincian Laporan *</label>
+                            <textarea id="lapKeterangan" required rows="3" placeholder="Tuliskan keterangan detail..." class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue"></textarea>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Foto Bukti Laporan (Opsional)</label>
+                                <input type="file" id="lapFoto" accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
+                            </div>
+                            <div class="flex items-center space-x-2 pt-4">
+                                <input type="checkbox" id="lapDarurat" class="w-4 h-4 text-red-600 rounded">
+                                <label for="lapDarurat" class="text-xs font-bold text-red-600 flex items-center space-x-1 cursor-pointer">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    <span>Tandai sebagai LAPORAN DARURAT</span>
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="bg-brand-orange hover:bg-brand-orangeHover text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md">
+                            Kirimkan Laporan Sekarang
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Feed Laporan Warga -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800">Daftar Laporan Warga</h3>
+                    <div id="laporanFeedContainer" class="space-y-4">
+                        <!-- Dynamic content -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 6: KEGIATAN -->
+            <section id="tab-kegiatan" class="tab-panel hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Kegiatan Lingkungan RW 07</h3>
+                        <p class="text-xs text-slate-500">Agenda dan dokumentasi kegiatan warga</p>
+                    </div>
+                    <button id="btnTambahKegiatan" onclick="openKegiatanModal()" class="hidden bg-brand-blue hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow">
+                        + Tambah Kegiatan Admin
+                    </button>
+                </div>
+                <div id="kegiatanContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Dynamic rendering -->
+                </div>
+            </section>
+
+            <!-- TAB 7: PENGUMUMAN -->
+            <section id="tab-pengumuman" class="tab-panel hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Pengumuman Resmi RW & RT</h3>
+                        <p class="text-xs text-slate-500">Informasi penting dari pengurus untuk seluruh warga</p>
+                    </div>
+                    <button id="btnTambahPengumuman" onclick="openPengumumanModal()" class="hidden bg-brand-blue hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow">
+                        + Buat Pengumuman Admin
+                    </button>
+                </div>
+                <div id="pengumumanContainer" class="space-y-4">
+                    <!-- Dynamic rendering -->
+                </div>
+            </section>
+
+            <!-- TAB 8: PENGATURAN (SUPER ADMIN ONLY) -->
+            <section id="tab-pengaturan" class="tab-panel hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                    <h3 class="text-lg font-bold text-slate-800 border-b pb-3 flex items-center space-x-2">
+                        <i class="fa-solid fa-sliders text-red-600"></i>
+                        <span>Pengaturan Sistem & Struktur Pengurus</span>
+                    </h3>
+                    
+                    <form onsubmit="handleSavePengaturan(event)" class="space-y-6 max-w-lg">
+                        <div class="space-y-3">
+                            <h4 class="text-sm font-bold text-slate-700">Penetapan Ketua RW & RT (Dipilih dari Warga)</h4>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Ketua RW 07</label>
+                                <select id="setKetuaRW" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue">
+                                    <!-- Dynamic Warga Options -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Ketua RT 13</label>
+                                <select id="setKetuaRT13" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue">
+                                    <!-- Dynamic Warga Options -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Ketua RT 14</label>
+                                <select id="setKetuaRT14" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue">
+                                    <!-- Dynamic Warga Options -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 border-t pt-4">
+                            <h4 class="text-sm font-bold text-slate-700">Pengaturan Password Administrator</h4>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Password Super Admin</label>
+                                <input type="password" id="setPassAdmin" value="jakun123" class="w-full px-4 py-2 bg-slate-50 border rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Password Pengurus (RW / RT 13 / RT 14)</label>
+                                <input type="password" id="setPassPengurus" value="jakun321" class="w-full px-4 py-2 bg-slate-50 border rounded-xl text-sm">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow">
+                            Simpan Seluruh Pengaturan
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODALS SECTION -->
+
+    <!-- API CONFIG MODAL -->
+    <div id="apiModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-800 flex items-center space-x-2">
+                    <i class="fa-solid fa-link text-brand-blue"></i>
+                    <span>Koneksi Google Sheets Web App API</span>
+                </h3>
+                <button onclick="closeApiModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="text-xs text-slate-500">Masukkan Web App Deployment URL dari Google Apps Script Anda untuk melakukan sinkronisasi live data secara penuh.</p>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Google Apps Script Web App URL</label>
+                <input type="text" id="apiUrlInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-mono">
+            </div>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="closeApiModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100">Batal</button>
+                <button onclick="saveApiUrl()" class="px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold shadow">Simpan & Sync</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN MODAL -->
+    <div id="loginModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-5">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-lg font-bold text-slate-800">Login Administrator Jakun</h3>
+                <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Username Admin *</label>
+                    <input type="text" id="loginUser" required placeholder="admin / rw / rt13 / rt14" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Password *</label>
+                    <input type="password" id="loginPass" required placeholder="••••••••" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue">
+                </div>
+                <button type="submit" class="w-full bg-brand-navy hover:bg-blue-900 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-md">
+                    Masuk Ke Sistem
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL TAMBAH/EDIT WARGA (1 KK & ANGGOTA) -->
+    <div id="wargaModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4 my-8">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 id="wargaModalTitle" class="text-base font-bold text-slate-800">Tambah Data Warga Baru</h3>
+                <button onclick="closeWargaModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleSaveWarga(event)" class="space-y-3">
+                <input type="hidden" id="wargaFormId">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">No KK (Konfidensial) *</label>
+                        <input type="text" id="wargaFormNoKK" required placeholder="3273..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">NIK (Konfidensial) *</label>
+                        <input type="text" id="wargaFormNIK" required placeholder="3273..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Nama Lengkap *</label>
+                    <input type="text" id="wargaFormNama" required placeholder="Nama lengkap sesuai KTP" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Wilayah RT *</label>
+                        <select id="wargaFormRT" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs">
+                            <option value="RT 13">RT 13</option>
+                            <option value="RT 14">RT 14</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Jenis Kependudukan *</label>
+                        <select id="wargaFormStatusWarga" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs">
+                            <option value="Tetap">Warga Tetap</option>
+                            <option value="Pendatang">Warga Pendatang</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Peran Dalam Kel.*</label>
+                        <select id="wargaFormPeran" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs">
+                            <option value="Kepala Keluarga">Kepala Keluarga</option>
+                            <option value="Istri">Istri</option>
+                            <option value="Anak">Anak</option>
+                            <option value="Anggota Lain">Anggota Lain</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Tanggal Lahir *</label>
+                        <input type="date" id="wargaFormTglLahir" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">No WhatsApp (Opsional)</label>
+                        <input type="text" id="wargaFormWA" placeholder="0812..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs">
+                    </div>
+                    <div class="flex items-center space-x-2 pt-4">
+                        <input type="checkbox" id="wargaFormYatim" class="w-4 h-4 text-purple-600 rounded">
+                        <label for="wargaFormYatim" class="text-xs font-bold text-purple-700">Status Anak Yatim</label>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-2 pt-3 border-t">
+                    <button type="button" onclick="closeWargaModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold shadow">Simpan Data Warga</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL TAMBAH KAS RW -->
+    <div id="kasModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-base font-bold text-slate-800">Tambah Transaksi Kas RW</h3>
+                <button onclick="closeKasModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleSaveKas(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Tanggal Transaksi *</label>
+                    <input type="date" id="kasTanggal" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Nama Penyetor / Sumber (Konfidensial) *</label>
+                    <input type="text" id="kasPenyetor" required placeholder="Bpk. Ahmad / H. Budi" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Kategori Iuran *</label>
+                        <select id="kasJenis" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs">
+                            <option value="Iuran Wajib">Iuran Wajib</option>
+                            <option value="Lain-lain">Lain-lain / Donasi</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Tipe Mutasi *</label>
+                        <select id="kasTipe" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs">
+                            <option value="Pemasukan">Pemasukan (+)</option>
+                            <option value="Pengeluaran">Pengeluaran (-)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Jumlah Nominal (Rp) *</label>
+                    <input type="number" id="kasJumlah" required placeholder="50000" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Keterangan Catatan *</label>
+                    <input type="text" id="kasKeterangan" required placeholder="Misal: Iuran Kebersihan Bulan Agustus" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs">
+                </div>
+                <div class="flex justify-end space-x-2 pt-3 border-t">
+                    <button type="button" onclick="closeKasModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow">Catat Mutasi Kas</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- APPLICATION LOGIC SCRIPT -->
+    <script>
+        // GLOBAL STATE STORAGE
+        let state = {
+            apiUrl: localStorage.getItem('jakun_api_url') || '',
+            currentUserRole: 'Warga', // Warga, SuperAdmin, RW, RT13, RT14
+            warga: [
+                { id: 'W01', No_KK: '327301290390001', NIK: '327301120478001', Nama: 'Ahmad Subagja', RT: 'RT 13', Status_Warga: 'Tetap', Peran: 'Kepala Keluarga', Tanggal_Lahir: '1978-04-12', Status_Hidup: 'Hidup', Status_Yatim: 'Tidak', No_WA: '08123456789' },
+                { id: 'W02', No_KK: '327301290390001', NIK: '327301520882002', Nama: 'Siti Aminah', RT: 'RT 13', Status_Warga: 'Tetap', Peran: 'Istri', Tanggal_Lahir: '1982-08-25', Status_Hidup: 'Hidup', Status_Yatim: 'Tidak', No_WA: '08129876543' },
+                { id: 'W03', No_KK: '327301290390001', NIK: '327301100518003', Nama: 'Rizky Subagja', RT: 'RT 13', Status_Warga: 'Tetap', Peran: 'Anak', Tanggal_Lahir: '2018-08-25', Status_Hidup: 'Hidup', Status_Yatim: 'Ya', No_WA: '' },
+                { id: 'W04', No_KK: '327301880120002', NIK: '327301140665004', Nama: 'H. Budi Santoso', RT: 'RT 13', Status_Warga: 'Tetap', Peran: 'Kepala Keluarga', Tanggal_Lahir: '1965-06-14', Status_Hidup: 'Hidup', Status_Yatim: 'Tidak', No_WA: '08129876543' },
+                { id: 'W05', No_KK: '327301990440003', NIK: '327301110185005', Nama: 'Dedi Kurnia', RT: 'RT 14', Status_Warga: 'Pendatang', Peran: 'Kepala Keluarga', Tanggal_Lahir: '1985-01-11', Status_Hidup: 'Hidup', Status_Yatim: 'Tidak', No_WA: '081311223344' }
+            ],
+            kas: [
+                { id: 'K01', Tanggal: '2026-08-01', Nama_Penyetor: 'Ahmad Subagja', Jenis_Iuran: 'Iuran Wajib', Tipe: 'Pemasukan', Jumlah: 50000, Keterangan: 'Iuran Kebersihan RT 13' },
+                { id: 'K02', Tanggal: '2026-08-05', Nama_Penyetor: 'H. Budi Santoso', Jenis_Iuran: 'Lain-lain', Tipe: 'Pemasukan', Jumlah: 250000, Keterangan: 'Donasi Kegiatan 17an' },
+                { id: 'K03', Tanggal: '2026-08-10', Nama_Penyetor: 'Kas RW', Jenis_Iuran: 'Lain-lain', Tipe: 'Pengeluaran', Jumlah: 100000, Keterangan: 'Pembelian Lampu Gang RT 14' }
+            ],
+            laporan: [
+                { id: 'L01', Tanggal: '2026-08-24 20:15', Pelapor: 'Pak RT 13', Jenis: 'Keamanan & Ketertiban', Lokasi: 'Pos Ronda RT 13', Keterangan: 'Pohon tumbang menghalangi jalan utama.', Status: 'Sedang Dicek', Is_Darurat: true, Foto: '' }
+            ],
+            kegiatan: [
+                { id: 'KG01', Nama: 'Kerja Bakti Massal RW 07', Tanggal: '2026-08-30', Foto: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=500&auto=format&fit=crop', Keterangan: 'Pembersihan selokan dan perantingan pohon menjelang musim hujan.' }
+            ],
+            pengumuman: [
+                { id: 'P01', Judul: 'Jadwal Ronda Malam Terbaru', Tanggal: '2026-08-15', Isi: 'Diharapkan seluruh warga mengecek jadwal piket di pos ronda RT 13 dan RT 14.', Penulis: 'Pengurus RW 07' }
+            ],
+            pengaturan: {
+                Pass_SuperAdmin: 'jakun123',
+                Pass_Pengurus: 'jakun321',
+                Ketua_RW: 'Ahmad Subagja',
+                Ketua_RT13: 'H. Budi Santoso',
+                Ketua_RT14: 'Dedi Kurnia'
+            }
+        };
+
+        // INITIALIZATION
+        window.addEventListener('DOMContentLoaded', () => {
+            if (state.apiUrl) {
+                document.getElementById('apiUrlInput').value = state.apiUrl;
+                fetchDataFromGoogleSheets();
+            }
+            renderAllViews();
+        });
+
+        // TOAST NOTIFICATION
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-slate-800';
+            
+            toast.className = `${bgClass} text-white px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold flex items-center space-x-2 pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // GOOGLE APPS SCRIPT SYNC FUNCTIONS
+        async function fetchDataFromGoogleSheets() {
+            if (!state.apiUrl) return;
+            try {
+                showToast('Menghubungkan ke Google Sheets...', 'info');
+                const res = await fetch(`${state.apiUrl}?action=getData&role=${state.currentUserRole}`);
+                const data = await res.json();
+                
+                if (data.warga) state.warga = data.warga;
+                if (data.kas) state.kas = data.kas;
+                if (data.laporan) state.laporan = data.laporan;
+                if (data.kegiatan) state.kegiatan = data.kegiatan;
+                if (data.pengumuman) state.pengumuman = data.pengumuman;
+                if (data.pengaturan) state.pengaturan = {...state.pengaturan, ...data.pengaturan};
+                
+                renderAllViews();
+                showToast('Data berhasil diperbarui dari Google Sheets!', 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Gagal memuat data Google Sheets. Menggunakan local data.', 'error');
+            }
+        }
+
+        async function postToGoogleSheets(payload) {
+            if (!state.apiUrl) return;
+            try {
+                await fetch(state.apiUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                showToast('Perubahan tersimpan ke Google Sheets!', 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Gagal sinkronisasi POST ke Google Sheets.', 'error');
+            }
+        }
+
+        // TAB SWITCHING LENGKAP NAV ATAS
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-panel').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('bg-sky-50', 'text-brand-blue', 'font-bold', 'shadow-sm');
+                el.classList.add('text-slate-600', 'font-semibold');
+            });
+
+            const activePanel = document.getElementById('tab-' + tabId);
+            const activeNav = document.getElementById('nav-' + tabId);
+
+            if (activePanel) activePanel.classList.remove('hidden');
+            if (activeNav) {
+                if (tabId === 'pengaturan') {
+                    activeNav.classList.add('bg-red-100', 'text-red-700', 'font-bold', 'shadow-sm');
+                } else {
+                    activeNav.classList.add('bg-sky-50', 'text-brand-blue', 'font-bold', 'shadow-sm');
+                }
+                activeNav.classList.remove('text-slate-600', 'font-semibold');
+                activeNav.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }
+
+        // ROLE MANAGEMENT & LOGIN
+        function toggleLoginLogout() {
+            if (state.currentUserRole !== 'Warga') {
+                state.currentUserRole = 'Warga';
+                updateRoleUI();
+                renderAllViews();
+                showToast('Anda telah keluar. Mode Akses Kembali ke Warga (Publik).', 'info');
+            } else {
+                document.getElementById('loginModal').classList.remove('hidden');
+            }
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.add('hidden');
+        }
+
+        function handleLoginSubmit(e) {
+            e.preventDefault();
+            const u = document.getElementById('loginUser').value.trim();
+            const p = document.getElementById('loginPass').value.trim();
+
+            if (u === 'admin' && p === state.pengaturan.Pass_SuperAdmin) {
+                state.currentUserRole = 'SuperAdmin';
+            } else if (u === 'rw' && p === state.pengaturan.Pass_Pengurus) {
+                state.currentUserRole = 'RW';
+            } else if (u === 'rt13' && p === state.pengaturan.Pass_Pengurus) {
+                state.currentUserRole = 'RT13';
+            } else if (u === 'rt14' && p === state.pengaturan.Pass_Pengurus) {
+                state.currentUserRole = 'RT14';
+            } else {
+                showToast('Username atau Password Salah!', 'error');
+                return;
+            }
+
+            closeLoginModal();
+            updateRoleUI();
+            renderAllViews();
+            showToast(`Berhasil login sebagai Administrator ${state.currentUserRole}`, 'success');
+        }
+
+        function updateRoleUI() {
+            const badge = document.getElementById('roleDisplayBadge');
+            const btnText = document.getElementById('loginBtnText');
+            const isLogged = state.currentUserRole !== 'Warga';
+
+            btnText.innerText = isLogged ? 'Keluar Admin' : 'Masuk Admin';
+            badge.innerText = state.currentUserRole;
+
+            // Toggle admin visibility buttons
+            const adminButtons = ['btnTambahWarga', 'btnTambahKas', 'btnTambahKegiatan', 'btnTambahPengumuman'];
+            adminButtons.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('hidden', !isLogged);
+            });
+
+            // Super Admin Settings menu
+            document.getElementById('nav-pengaturan').classList.toggle('hidden', state.currentUserRole !== 'SuperAdmin');
+        }
+
+        // RENDER ALL VIEWS & DASHBOARD
+        function renderAllViews() {
+            renderDashboard();
+            renderWargaTable();
+            renderKasTable();
+            renderStatistik();
+            renderLaporanFeed();
+            renderKegiatan();
+            renderPengumuman();
+            renderPengaturanSelects();
+        }
+
+        function renderDashboard() {
+            // Contacts
+            const ketuaRW = state.warga.find(w => w.Nama === state.pengaturan.Ketua_RW) || { Nama: state.pengaturan.Ketua_RW, No_WA: '08123456789' };
+            const ketuaRT13 = state.warga.find(w => w.Nama === state.pengaturan.Ketua_RT13) || { Nama: state.pengaturan.Ketua_RT13, No_WA: '08129876543' };
+            const ketuaRT14 = state.warga.find(w => w.Nama === state.pengaturan.Ketua_RT14) || { Nama: state.pengaturan.Ketua_RT14, No_WA: '081311223344' };
+
+            document.getElementById('namaKetuaRW').innerText = ketuaRW.Nama;
+            document.getElementById('namaKetuaRT13').innerText = ketuaRT13.Nama;
+            document.getElementById('namaKetuaRT14').innerText = ketuaRT14.Nama;
+
+            document.getElementById('waRwLink').href = `https://wa.me/62${(ketuaRW.No_WA || '').replace(/^0/, '')}`;
+            document.getElementById('waRt13Link').href = `https://wa.me/62${(ketuaRT13.No_WA || '').replace(/^0/, '')}`;
+            document.getElementById('waRt14Link').href = `https://wa.me/62${(ketuaRT14.No_WA || '').replace(/^0/, '')}`;
+
+            // Ulang tahun bulan ini
+            const currentMonth = new Date().getMonth();
+            const bdays = state.warga.filter(w => w.Tanggal_Lahir && new Date(w.Tanggal_Lahir).getMonth() === currentMonth);
+            const bdayContainer = document.getElementById('birthdayListContainer');
+            
+            if (bdays.length === 0) {
+                bdayContainer.innerHTML = '<p class="text-xs italic">Tidak ada warga berulang tahun bulan ini.</p>';
+            } else {
+                bdayContainer.innerHTML = bdays.map(w => `
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-cake-candles text-amber-200"></i>
+                        <span>Bapak/Ibu <strong>${w.Nama}</strong> (${w.RT}) - Semoga sehat selalu dan penuh keberkahan!</span>
+                    </div>
+                `).join('');
+            }
+
+            // Dashboard Announcements
+            const dashAnn = document.getElementById('dashboardAnnounceContainer');
+            dashAnn.innerHTML = state.pengumuman.slice(0, 2).map(p => `
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span class="text-[10px] font-bold text-slate-400">${p.Tanggal}</span>
+                    <h4 class="text-xs font-bold text-slate-800">${p.Judul}</h4>
+                    <p class="text-xs text-slate-600 line-clamp-1 mt-0.5">${p.Isi}</p>
+                </div>
+            `).join('') || '<p class="text-xs text-slate-400">Belum ada pengumuman.</p>';
+
+            // Dashboard Pending Reports
+            const dashRep = document.getElementById('dashboardReportsContainer');
+            const unhandled = state.laporan.filter(l => l.Status !== 'Selesai');
+            dashRep.innerHTML = unhandled.slice(0, 2).map(l => `
+                <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 flex justify-between items-start">
+                    <div class="space-y-1">
+                        ${l.Is_Darurat ? '<span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-red-600 text-white"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Darurat</span>' : ''}
+                        <h4 class="text-xs font-bold text-slate-800">${l.Jenis}</h4>
+                        <p class="text-[11px] text-slate-500">Lokasi: ${l.Lokasi}</p>
+                    </div>
+                    <span class="text-[10px] font-bold text-amber-800 bg-amber-200 px-2 py-1 rounded-md">${l.Status}</span>
+                </div>
+            `).join('') || '<p class="text-xs text-slate-400">Semua laporan sudah ditangani.</p>';
+        }
+
+        // DATA WARGA TAB
+        function renderWargaTable() {
+            const container = document.getElementById('wargaContainer');
+            const search = document.getElementById('wargaSearchInput').value.toLowerCase();
+            const rtFilter = document.getElementById('wargaRtFilter').value;
+            const statusFilter = document.getElementById('wargaStatusFilter').value;
+
+            let filtered = state.warga.filter(w => w.Status_Hidup === 'Hidup');
+
+            if (rtFilter) filtered = filtered.filter(w => w.RT === rtFilter);
+            if (statusFilter) filtered = filtered.filter(w => w.Status_Warga === statusFilter);
+            if (search) filtered = filtered.filter(w => w.Nama.toLowerCase().includes(search));
+
+            // Group by No_KK
+            const grouped = {};
+            filtered.forEach(w => {
+                const kkKey = w.No_KK || 'Tanpa KK';
+                if (!grouped[kkKey]) grouped[kkKey] = [];
+                grouped[kkKey].push(w);
+            });
+
+            const isLogged = state.currentUserRole !== 'Warga';
+
+            if (Object.keys(grouped).length === 0) {
+                container.innerHTML = '<div class="bg-white p-6 rounded-2xl text-center text-xs text-slate-400">Data warga tidak ditemukan.</div>';
+                return;
+            }
+
+            container.innerHTML = Object.keys(grouped).map(kk => {
+                const members = grouped[kk];
+                const head = members.find(m => m.Peran === 'Kepala Keluarga') || members[0];
+                return `
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                            <div>
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-brand-blue bg-blue-50 px-2 py-1 rounded-md">Kartu Keluarga</span>
+                                <h3 class="font-bold text-slate-800 text-sm mt-1">KK: ${isLogged ? kk : '*** (Disembunyikan)'} - Kepala Kel: ${head.Nama}</h3>
+                            </div>
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-200 text-slate-700 self-start sm:self-auto">${head.RT}</span>
+                        </div>
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="w-full text-left text-xs text-slate-600">
+                                <thead class="bg-slate-100 text-[10px] font-bold uppercase text-slate-400">
+                                    <tr>
+                                        <th class="px-6 py-3">Nama Lengkap</th>
+                                        <th class="px-6 py-3">Peran</th>
+                                        <th class="px-6 py-3">Status</th>
+                                        <th class="px-6 py-3">NIK (Konfidensial)</th>
+                                        ${isLogged ? '<th class="px-6 py-3 text-right">Aksi Admin</th>' : ''}
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    ${members.map(m => `
+                                        <tr class="hover:bg-slate-50">
+                                            <td class="px-6 py-3 font-semibold text-slate-800">
+                                                ${m.Nama}
+                                                ${m.Nama === state.pengaturan.Ketua_RW ? '<span class="ml-2 px-2 py-0.5 rounded-full text-[10px] bg-blue-100 text-blue-800">Ketua RW</span>' : ''}
+                                                ${m.Nama === state.pengaturan.Ketua_RT13 ? '<span class="ml-2 px-2 py-0.5 rounded-full text-[10px] bg-sky-100 text-sky-800">Ketua RT 13</span>' : ''}
+                                                ${m.Nama === state.pengaturan.Ketua_RT14 ? '<span class="ml-2 px-2 py-0.5 rounded-full text-[10px] bg-sky-100 text-sky-800">Ketua RT 14</span>' : ''}
+                                            </td>
+                                            <td class="px-6 py-3">${m.Peran}</td>
+                                            <td class="px-6 py-3 space-x-1">
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${m.Status_Warga === 'Tetap' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${m.Status_Warga}</span>
+                                                ${m.Status_Yatim === 'Ya' ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">Anak Yatim</span>' : ''}
+                                            </td>
+                                            <td class="px-6 py-3 font-mono">${isLogged ? m.NIK : '*** (Konfidensial)'}</td>
+                                            ${isLogged ? `
+                                                <td class="px-6 py-3 text-right space-x-2">
+                                                    <button onclick="markMeninggal('${m.id}')" title="Tandai Meninggal" class="text-amber-600 hover:text-amber-800"><i class="fa-solid fa-cross"></i></button>
+                                                    <button onclick="deleteWarga('${m.id}')" title="Hapus (Pindah)" class="text-red-600 hover:text-red-800"><i class="fa-solid fa-trash"></i></button>
+                                                </td>
+                                            ` : ''}
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openWargaModal() { document.getElementById('wargaModal').classList.remove('hidden'); }
+        function closeWargaModal() { document.getElementById('wargaModal').classList.add('hidden'); }
+
+        function handleSaveWarga(e) {
+            e.preventDefault();
+            const newWarga = {
+                id: 'W-' + Date.now(),
+                No_KK: document.getElementById('wargaFormNoKK').value,
+                NIK: document.getElementById('wargaFormNIK').value,
+                Nama: document.getElementById('wargaFormNama').value,
+                RT: document.getElementById('wargaFormRT').value,
+                Status_Warga: document.getElementById('wargaFormStatusWarga').value,
+                Peran: document.getElementById('wargaFormPeran').value,
+                Tanggal_Lahir: document.getElementById('wargaFormTglLahir').value,
+                Status_Hidup: 'Hidup',
+                Status_Yatim: document.getElementById('wargaFormYatim').checked ? 'Ya' : 'Tidak',
+                No_WA: document.getElementById('wargaFormWA').value
+            };
+
+            state.warga.push(newWarga);
+            closeWargaModal();
+            renderAllViews();
+            showToast('Warga baru berhasil ditambahkan!', 'success');
+            postToGoogleSheets({ action: 'addWarga', ...newWarga });
+        }
+
+        function markMeninggal(wargaId) {
+            const w = state.warga.find(x => x.id === wargaId);
+            if (w) {
+                w.Status_Hidup = 'Meninggal';
+                renderAllViews();
+                showToast(`Status ${w.Nama} diperbarui menjadi Meninggal. Statistik otomatis diperbarui.`, 'info');
+                postToGoogleSheets({ action: 'updateStatusMeninggal', nik: w.NIK });
+            }
+        }
+
+        function deleteWarga(wargaId) {
+            state.warga = state.warga.filter(w => w.id !== wargaId);
+            renderAllViews();
+            showToast('Data warga berhasil dihapus (Pindah).', 'info');
+        }
+
+        // KAS RW TAB
+        function renderKasTable() {
+            const isLogged = state.currentUserRole !== 'Warga';
+            let totalMasuk = 0, totalKeluar = 0, iuranWajib = 0, lainLain = 0;
+
+            state.kas.forEach(k => {
+                const j = parseFloat(k.Jumlah) || 0;
+                if (k.Tipe === 'Pemasukan') {
+                    totalMasuk += j;
+                    if (k.Jenis_Iuran === 'Iuran Wajib') iuranWajib += j;
+                    else lainLain += j;
+                } else {
+                    totalKeluar += j;
+                }
+            });
+
+            const totalSaldo = totalMasuk - totalKeluar;
+            document.getElementById('saldoIuranWajib').innerText = 'Rp ' + iuranWajib.toLocaleString('id-ID');
+            document.getElementById('saldoLainLain').innerText = 'Rp ' + lainLain.toLocaleString('id-ID');
+            document.getElementById('saldoTotalKas').innerText = 'Rp ' + totalSaldo.toLocaleString('id-ID');
+
+            const tbody = document.getElementById('kasTableBody');
+            tbody.innerHTML = state.kas.map(k => `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-6 py-3 text-xs">${k.Tanggal}</td>
+                    <td class="px-6 py-3 font-semibold text-slate-700">${isLogged ? k.Nama_Penyetor : '*** (Disembunyikan)'}</td>
+                    <td class="px-6 py-3"><span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs">${k.Jenis_Iuran}</span></td>
+                    <td class="px-6 py-3 text-xs">${k.Keterangan}</td>
+                    <td class="px-6 py-3">
+                        <span class="text-xs font-bold ${k.Tipe === 'Pemasukan' ? 'text-emerald-600' : 'text-red-600'}">
+                            ${k.Tipe}
+                        </span>
+                    </td>
+                    <td class="px-6 py-3 text-right font-mono font-bold ${k.Tipe === 'Pemasukan' ? 'text-emerald-600' : 'text-red-600'}">
+                        ${k.Tipe === 'Pemasukan' ? '+' : '-'}Rp ${(parseFloat(k.Jumlah)||0).toLocaleString('id-ID')}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openKasModal() { document.getElementById('kasModal').classList.remove('hidden'); }
+        function closeKasModal() { document.getElementById('kasModal').classList.add('hidden'); }
+
+        function handleSaveKas(e) {
+            e.preventDefault();
+            const newKas = {
+                id: 'K-' + Date.now(),
+                Tanggal: document.getElementById('kasTanggal').value,
+                Nama_Penyetor: document.getElementById('kasPenyetor').value,
+                Jenis_Iuran: document.getElementById('kasJenis').value,
+                Tipe: document.getElementById('kasTipe').value,
+                Jumlah: parseFloat(document.getElementById('kasJumlah').value) || 0,
+                Keterangan: document.getElementById('kasKeterangan').value
+            };
+            state.kas.push(newKas);
+            closeKasModal();
+            renderAllViews();
+            showToast('Transaksi kas berhasil dicatat!', 'success');
+            postToGoogleSheets({ action: 'addKas', ...newKas });
+        }
+
+        // STATISTIK TAB
+        function renderStatistik() {
+            const living = state.warga.filter(w => w.Status_Hidup === 'Hidup');
+            const totalJiwa = living.length;
+            const uniqueKK = new Set(living.map(w => w.No_KK)).size;
+            const deaths = state.warga.filter(w => w.Status_Hidup === 'Meninggal').length;
+            const births = living.filter(w => w.Peran === 'Anak' && getAge(w.Tanggal_Lahir) <= 1).length;
+
+            document.getElementById('statTotalJiwa').innerText = totalJiwa;
+            document.getElementById('statTotalKK').innerText = uniqueKK;
+            document.getElementById('statKelahiran').innerText = births;
+            document.getElementById('statKematian').innerText = deaths;
+
+            // Per RT breakdown
+            const rt13 = living.filter(w => w.RT === 'RT 13');
+            const rt14 = living.filter(w => w.RT === 'RT 14');
+            const rt13KK = new Set(rt13.map(w => w.No_KK)).size;
+            const rt14KK = new Set(rt14.map(w => w.No_KK)).size;
+
+            document.getElementById('statRt13Text').innerText = `${rt13.length} Jiwa (${rt13KK} KK)`;
+            document.getElementById('statRt14Text').innerText = `${rt14.length} Jiwa (${rt14KK} KK)`;
+
+            document.getElementById('statRt13Bar').style.width = totalJiwa ? `${(rt13.length/totalJiwa)*100}%` : '0%';
+            document.getElementById('statRt14Bar').style.width = totalJiwa ? `${(rt14.length/totalJiwa)*100}%` : '0%';
+
+            // Age groups
+            let balita=0, anak=0, remaja=0, dewasa=0, lansia=0, yatim=0;
+            living.forEach(w => {
+                const age = getAge(w.Tanggal_Lahir);
+                if (age <= 5) balita++;
+                else if (age <= 12) anak++;
+                else if (age <= 17) remaja++;
+                else if (age <= 65) dewasa++;
+                else lansia++;
+
+                if (w.Status_Yatim === 'Ya') yatim++;
+            });
+
+            document.getElementById('statBalita').innerText = balita;
+            document.getElementById('statAnak').innerText = anak;
+            document.getElementById('statRemaja').innerText = remaja;
+            document.getElementById('statDewasa').innerText = dewasa;
+            document.getElementById('statLansia').innerText = lansia;
+            document.getElementById('statYatim').innerText = yatim;
+        }
+
+        function getAge(bdayStr) {
+            if (!bdayStr) return 0;
+            const birth = new Date(bdayStr);
+            const now = new Date();
+            let age = now.getFullYear() - birth.getFullYear();
+            const m = now.getMonth() - birth.getMonth();
+            if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+            return age < 0 ? 0 : age;
+        }
+
+        // LAPORAN WARGA TAB
+        function renderLaporanFeed() {
+            const container = document.getElementById('laporanFeedContainer');
+            const isLogged = state.currentUserRole !== 'Warga';
+
+            if (state.laporan.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400">Belum ada laporan warga.</p>';
+                return;
+            }
+
+            container.innerHTML = state.laporan.map(l => `
+                <div class="p-4 rounded-2xl border ${l.Is_Darurat ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'} space-y-2">
+                    <div class="flex justify-between items-start">
+                        <div class="space-y-1">
+                            ${l.Is_Darurat ? '<span class="inline-block text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-red-600 text-white"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Laporan Darurat</span>' : ''}
+                            <h4 class="font-bold text-slate-800 text-sm">${l.Jenis}</h4>
+                            <p class="text-xs text-slate-500">Pelapor: ${l.Pelapor} • Lokasi: ${l.Lokasi} • ${l.Tanggal}</p>
+                        </div>
+                        <span class="text-xs font-bold px-3 py-1 rounded-full ${l.Status === 'Selesai' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${l.Status}</span>
+                    </div>
+                    <p class="text-xs text-slate-700 leading-relaxed">${l.Keterangan}</p>
+                    ${isLogged ? `
+                        <div class="pt-2 border-t flex space-x-2">
+                            <button onclick="updateLaporanStatus('${l.id}', 'Sedang Dicek')" class="px-3 py-1 bg-amber-500 text-white rounded-lg text-[10px] font-bold">Set: Sedang Dicek</button>
+                            <button onclick="updateLaporanStatus('${l.id}', 'Selesai')" class="px-3 py-1 bg-emerald-600 text-white rounded-lg text-[10px] font-bold">Set: Selesai</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function handleAddLaporan(e) {
+            e.preventDefault();
+            const newLap = {
+                id: 'L-' + Date.now(),
+                Tanggal: new Date().toLocaleString('id-ID'),
+                Pelapor: document.getElementById('lapPelapor').value,
+                Jenis: document.getElementById('lapJenis').value,
+                Lokasi: document.getElementById('lapLokasi').value,
+                Keterangan: document.getElementById('lapKeterangan').value,
+                Status: 'Sedang Dicek',
+                Is_Darurat: document.getElementById('lapDarurat').checked,
+                Foto: ''
+            };
+
+            state.laporan.unshift(newLap);
+            renderAllViews();
+            showToast('Laporan Anda berhasil dikirimkan!', 'success');
+            postToGoogleSheets({ action: 'addLaporan', ...newLap });
+        }
+
+        function updateLaporanStatus(lapId, status) {
+            const l = state.laporan.find(x => x.id === lapId);
+            if (l) {
+                l.Status = status;
+                renderAllViews();
+                showToast(`Status laporan diperbarui ke "${status}"`, 'info');
+            }
+        }
+
+        // KEGIATAN & PENGUMUMAN
+        function renderKegiatan() {
+            const container = document.getElementById('kegiatanContainer');
+            container.innerHTML = state.kegiatan.map(k => `
+                <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200">
+                    <img src="${k.Foto || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=500&auto=format&fit=crop'}" class="w-full h-44 object-cover" alt="Kegiatan">
+                    <div class="p-4 space-y-2">
+                        <span class="text-xs font-bold text-brand-blue"><i class="fa-regular fa-calendar mr-1"></i>${k.Tanggal}</span>
+                        <h4 class="font-bold text-slate-800 text-base">${k.Nama}</h4>
+                        <p class="text-xs text-slate-600 leading-relaxed">${k.Keterangan}</p>
+                    </div>
+                </div>
+            `).join('') || '<p class="text-xs text-slate-400">Belum ada kegiatan.</p>';
+        }
+
+        function renderPengumuman() {
+            const container = document.getElementById('pengumumanContainer');
+            container.innerHTML = state.pengumuman.map(p => `
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-2">
+                    <div class="flex justify-between items-center text-xs text-slate-400">
+                        <span>Oleh: ${p.Penulis}</span>
+                        <span>${p.Tanggal}</span>
+                    </div>
+                    <h4 class="font-bold text-slate-800 text-base">${p.Judul}</h4>
+                    <p class="text-xs text-slate-600 leading-relaxed">${p.Isi}</p>
+                </div>
+            `).join('') || '<p class="text-xs text-slate-400">Belum ada pengumuman.</p>';
+        }
+
+        // PENGATURAN SUPER ADMIN
+        function renderPengaturanSelects() {
+            const rwSel = document.getElementById('setKetuaRW');
+            const rt13Sel = document.getElementById('setKetuaRT13');
+            const rt14Sel = document.getElementById('setKetuaRT14');
+
+            const options = state.warga.map(w => `<option value="${w.Nama}">${w.Nama} (${w.RT})</option>`).join('');
+            
+            rwSel.innerHTML = options;
+            rt13Sel.innerHTML = options;
+            rt14Sel.innerHTML = options;
+
+            rwSel.value = state.pengaturan.Ketua_RW;
+            rt13Sel.value = state.pengaturan.Ketua_RT13;
+            rt14Sel.value = state.pengaturan.Ketua_RT14;
+        }
+
+        function handleSavePengaturan(e) {
+            e.preventDefault();
+            state.pengaturan.Ketua_RW = document.getElementById('setKetuaRW').value;
+            state.pengaturan.Ketua_RT13 = document.getElementById('setKetuaRT13').value;
+            state.pengaturan.Ketua_RT14 = document.getElementById('setKetuaRT14').value;
+            state.pengaturan.Pass_SuperAdmin = document.getElementById('setPassAdmin').value;
+            state.pengaturan.Pass_Pengurus = document.getElementById('setPassPengurus').value;
+
+            renderAllViews();
+            showToast('Pengaturan sistem berhasil disimpan!', 'success');
+        }
+
+        // API MODAL CONTROL
+        function openApiModal() { document.getElementById('apiModal').classList.remove('hidden'); }
+        function closeApiModal() { document.getElementById('apiModal').classList.add('hidden'); }
+        function saveApiUrl() {
+            const url = document.getElementById('apiUrlInput').value.trim();
+            state.apiUrl = url;
+            localStorage.setItem('jakun_api_url', url);
+            closeApiModal();
+            fetchDataFromGoogleSheets();
+        }
+    </script>
+</body>
+</html>
+```
