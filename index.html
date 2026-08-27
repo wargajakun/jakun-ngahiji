@@ -509,10 +509,12 @@
             try {
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
+                    mode: 'no-cors', // WAJIB ADA: Mencegah Github/Browser memblokir pengiriman data
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(payload)
                 });
-            } catch (err) { console.error(err); }
+                console.log("Proses background sinkronisasi selesai.");
+            } catch (err) { console.error("Gagal sinkron:", err); }
         }
 
         function switchTab(tabId) {
@@ -786,4 +788,3 @@
     </script>
 </body>
 </html>
-```
