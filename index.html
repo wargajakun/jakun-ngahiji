@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JAKUN NGAHIJI - Sistem Informasi Terpadu RW 07</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
@@ -41,12 +38,10 @@
 
     <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
-    <!-- TOPBAR HEADER DENGAN LOGO KEBERSAMAAN WARGA -->
     <header class="bg-gradient-to-r from-brand-navy via-blue-900 to-brand-blue text-white shadow-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16 sm:h-20">
                 <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('dashboard')">
-                    <!-- Logo Ikon Kebersamaan Warga -->
                     <div class="w-11 h-11 sm:w-12 sm:h-12 bg-white/15 rounded-2xl flex items-center justify-center border border-white/25 backdrop-blur-md shadow-inner text-brand-orange text-xl sm:text-2xl">
                         <i class="fa-solid fa-users-line"></i>
                     </div>
@@ -75,7 +70,6 @@
         </div>
     </header>
 
-    <!-- TOP NAVIGATION BAR -->
     <div class="bg-white border-b border-slate-200 shadow-sm sticky top-16 sm:top-20 z-30">
         <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
             <nav class="flex space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar py-2.5 w-full">
@@ -107,11 +101,9 @@
         </div>
     </div>
 
-    <!-- MAIN BODY LAYOUT -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-1 py-6">
         <main class="w-full space-y-6">
 
-            <!-- TAB 1: DASHBOARD -->
             <section id="tab-dashboard" class="tab-panel space-y-6">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <a id="waRwLink" href="#" target="_blank" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-500 transition-all flex items-center space-x-4 group">
@@ -155,7 +147,6 @@
                 </div>
             </section>
 
-            <!-- TAB 2: DATA WARGA -->
             <section id="tab-data-warga" class="tab-panel hidden space-y-6">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -185,7 +176,6 @@
                 <div id="wargaContainer" class="space-y-6"></div>
             </section>
 
-            <!-- TAB 3: KAS RW -->
             <section id="tab-kas-rw" class="tab-panel hidden space-y-6">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-1">
@@ -229,7 +219,6 @@
                 </div>
             </section>
 
-            <!-- TAB 4: STATISTIK -->
             <section id="tab-statistik" class="tab-panel hidden space-y-6">
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-1">
@@ -285,7 +274,6 @@
                 </div>
             </section>
 
-            <!-- TAB 5: WARGA MELAPOR -->
             <section id="tab-lapor" class="tab-panel hidden space-y-6">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                     <h3 class="text-lg font-bold text-slate-800 flex items-center space-x-2">
@@ -333,7 +321,6 @@
                 </div>
             </section>
 
-            <!-- TAB 6: KEGIATAN -->
             <section id="tab-kegiatan" class="tab-panel hidden space-y-6">
                 <div class="flex justify-between items-center">
                     <div>
@@ -347,7 +334,6 @@
                 <div id="kegiatanContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
             </section>
 
-            <!-- TAB 7: PENGUMUMAN -->
             <section id="tab-pengumuman" class="tab-panel hidden space-y-6">
                 <div class="flex justify-between items-center">
                     <div>
@@ -361,7 +347,6 @@
                 <div id="pengumumanContainer" class="space-y-4"></div>
             </section>
 
-            <!-- TAB 8: PENGATURAN -->
             <section id="tab-pengaturan" class="tab-panel hidden space-y-6">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
                     <h3 class="text-lg font-bold text-slate-800 border-b pb-3 flex items-center space-x-2">
@@ -387,7 +372,6 @@
         </main>
     </div>
 
-    <!-- MODALS SECTION -->
     <div id="loginModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-5">
             <div class="flex justify-between items-center border-b pb-3">
@@ -402,7 +386,6 @@
         </div>
     </div>
 
-    <!-- MODAL TAMBAH / EDIT WARGA -->
     <div id="wargaModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4 my-8">
             <div class="flex justify-between items-center border-b pb-3">
@@ -435,7 +418,6 @@
         </div>
     </div>
 
-    <!-- MODAL KAS, KEGIATAN, PENGUMUMAN -->
     <div id="kasModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
             <div class="flex justify-between items-center border-b pb-3"><h3 class="text-base font-bold text-slate-800">Tambah Mutasi Kas</h3><button onclick="closeKasModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div>
@@ -477,7 +459,6 @@
         </div>
     </div>
 
-    <!-- MAIN SCRIPT -->
     <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwg27q0dhIFDfgXInY9SlkbImNITMd3y0Q8QCv-LHdFheQbC7tLVMpswBTCCLr4wa1Y9Q/exec'; 
 
@@ -526,7 +507,11 @@
         async function postToGoogleSheets(payload) {
             if (!SCRIPT_URL.includes('script.google.com')) return;
             try {
-                await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
             } catch (err) { console.error(err); }
         }
 
@@ -591,7 +576,6 @@
             document.getElementById('dashboardReportsContainer').innerHTML = state.laporan.filter(l => l.Status !== 'Selesai').slice(0, 2).map(l => `<div class="p-3 bg-amber-50 rounded-xl border border-amber-200"><h4 class="text-xs font-bold text-slate-800">${l.Is_Darurat?'🚨 ':''}${l.Jenis}</h4><span class="text-[10px] bg-amber-200 px-2 py-0.5 rounded-md mt-1 inline-block">${l.Status}</span></div>`).join('') || '<p class="text-xs text-slate-400">Semua tuntas.</p>';
         }
 
-        // RENDER TABEL DATA WARGA (Hanya Tampilkan Kolom yang Diminta)
         function renderWargaTable() {
             let filtered = state.warga.filter(w => w.Status_Hidup === 'Hidup');
             const search = document.getElementById('wargaSearchInput').value.toLowerCase();
@@ -603,7 +587,7 @@
 
             const grouped = {};
             filtered.forEach(w => { const kk = w.No_KK || 'Tanpa KK'; if (!grouped[kk]) grouped[kk] = []; grouped[kk].push(w); });
-            const isLogged = state.currentUserRole !== 'Warga'; // Pengecekan admin login
+            const isLogged = state.currentUserRole !== 'Warga';
             
             document.getElementById('wargaContainer').innerHTML = Object.keys(grouped).map(kk => {
                 const head = grouped[kk].find(m => m.Peran === 'Kepala Keluarga') || grouped[kk][0];
@@ -651,7 +635,7 @@
                                                 </td>
                                             ` : ''}
                                         </tr>
-                                    `}).join('')}
+                                        `}).join('')}
                                 </tbody>
                             </table>
                         </div>
@@ -710,11 +694,7 @@
             };
 
             const index = state.warga.findIndex(x => x.NIK === nik);
-            if (index !== -1) {
-                state.warga[index] = payload;
-            } else {
-                state.warga.push(payload);
-            }
+            if (index !== -1) { state.warga[index] = payload; } else { state.warga.push(payload); }
 
             closeWargaModal();
             renderAllViews();
@@ -806,3 +786,4 @@
     </script>
 </body>
 </html>
+```
